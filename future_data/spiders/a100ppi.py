@@ -1,13 +1,15 @@
 import scrapy
 from datetime import datetime, date, timedelta
 import os
+import re
+from ..consts import *
 import pandas as pd
 import numpy as np
 from ..items import *
 
 one_day = timedelta(days=1)
 today = datetime.now().date()
-
+upper_case_re = re.compile('[A-Z]')
 
 class A100ppiSpider(scrapy.Spider):
     name = '100ppi'
@@ -69,13 +71,18 @@ class A100ppiSpider(scrapy.Spider):
             fi['date'] = date_str
             fi['commodity'] = results[0]
             fi['price'] = results[1]
-            fi['code'] = results[2]
+            fi['contract_date'] = results[2]
             fi['main_price'] = results[3]
             fi['base_diff'] = results[5]
             fi['base_diff_percentage'] = results[6]
             fi['highest_base_diff'] = results[8]
             fi['lowest_base_diff'] = results[9]
             fi['average_base_diff'] = results[10]
+            code = code_map[fi['commodity']]
+            date_len = 4
+            if upper_case_re.search(code):
+                date_len = 3
+            fi['code'] = fi['contract_date'][-date_len:]
             yield fi
 
     # table = [
