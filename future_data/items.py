@@ -35,3 +35,51 @@ class FutureDataItem(scrapy.Item):
     average_base_diff = scrapy.Field()
     code = scrapy.Field()
     pass
+
+
+class OptionItem(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    nameToField = {
+
+        '日期': 'DateTime',
+        '商品': 'Stockid',
+        '最高': 'HighPrice',
+        '最低': 'LowPrice',
+        '收盘': 'ClosePrice',
+        '开盘': 'OpenPrice',
+    }
+    DateTime = scrapy.Field()
+    Stockid = scrapy.Field()
+    HighPrice = scrapy.Field()
+    LowPrice = scrapy.Field()
+    ClosePrice = scrapy.Field()
+    OpenPrice = scrapy.Field()
+    pass
+
+
+class ShiborItem(scrapy.Item):
+    # define the fields for your item here like:
+    # name = scrapy.Field()
+    nameToField = {
+
+        '日期': 'DateTime',
+        'ON': 'TON',
+        '一周': 'T1W',
+        '两周': 'T2W',
+        '一个月': 'T1M',
+        '三个月': 'T3M',
+        '六个月': 'T6M',
+        '九个月': 'T9M',
+        '一年': 'T1Y',
+    }
+    DateTime = scrapy.Field()
+    TON = scrapy.Field()
+    T1W = scrapy.Field()
+    T2W = scrapy.Field()
+    T1M = scrapy.Field()
+    T3M = scrapy.Field()
+    T6M = scrapy.Field()
+    T9M = scrapy.Field()
+    T1Y = scrapy.Field()
+    pass

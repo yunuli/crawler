@@ -6,17 +6,20 @@ from ..consts import *
 import pandas as pd
 import numpy as np
 from ..items import *
+import xml.etree.ElementTree as ET
 
 one_day = timedelta(days=1)
 today = datetime.now().date()
 upper_case_re = re.compile('[A-Z]')
 
+
 class A100ppiSpider(scrapy.Spider):
     name = '100ppi'
-    allowed_domains = ['100ppi.com']
-    base_url = 'http://www.100ppi.com/sf2/day'
-    next_date = date(2010, 1, 1)  # 开始日期
-    end_date = today  # date(2020, 8, 6)
+    allowed_domains = ['cffex.com.cn/']
+    base_url = 'file:///Users/marcoyu/Developer/crawler/'
+    next_date = date(2020, 1, 1)  # 开始日期
+    end_date = date(2021, 2, 11)  # 开始日期
+    # end_date = today  # date(2020, 8, 6)
 
     def next(self):
         """
@@ -26,64 +29,61 @@ class A100ppiSpider(scrapy.Spider):
         """
         nd = self.next_date
         # 最多采集到今天
-        if nd >= today:
+        if nd >= self.end_date:
             return None, None, None
 
-        exists = True
-        while exists:
+        # self.logger.info(nd)
+        # self.logger.info(nd.day)
+        while True:
             path = f'''./{nd.year}/{nd.year}-{nd.month}-{nd.day}.html'''
             exists = os.path.exists(path)
+            nd += one_day
             if exists:
-                nd += one_day
+                break
 
-        url = f'''{self.base_url}-{nd.year}-{nd.month}-{nd.day}.html'''
-        date_str = self.next_date.strftime('%Y-%m-%d')
-        self.next_date = nd + one_day
-        self.logger.info('%s %s %s', url, path, date_str)
+        date_str = (nd - one_day).strftime('%Y-%m-%d')
+        self.next_date = nd
+        # path_date_format = self.next_date.strftime('%Y%m/%d')
+        url = f'''{self.base_url}{path[2:]}'''
+        # self.logger.info('%s %s %s', url, path, date_str)
         return url, path, date_str
 
     def start_requests(self):
         url, path, date_str = self.next()
         while url:
+            if 'robots' in url:
+                continue
             yield scrapy.Request(url=url, callback=self.parse, meta={'path': path, 'date': date_str})
             url, path, date_str = self.next()
 
     def parse(self, response):
+        if response.status != 200:
+            return
         self.logger.info('parsing--------')
         path = response.meta.get('path')
         date_str = response.meta.get('date')
-        self.logger.info(response.url)
-        self.logger.info(path)
-        os.makedirs(date_str[0:4], exist_ok=True)
-        with open(path, 'wb') as f:
-            f.write(response.body)
+        # self.logger.info(response.url)
+        # self.logger.info(path)
+        # os.makedirs(date_str[0:4], exist_ok=True)
+        # with open(path, 'wb') as f:
+        #     f.write(response.body)
 
         # 找到有商品数据的行
-        rows = response.css('#fdata>tr[bgcolor="#fafdff"]')
-        for row in rows:
+        root = ET.fromstring(response.text)
+        for data in root.iter('dailydata'):
             # 取出每列
-            tds = row.css('tr[bgcolor="#fafdff"]>td')
-            print(len(tds))
-            # 从列中提取对应数据
-            results = [''.join(texts).strip() for texts in tds.css('::text').getall()]
-            print((results))
-            fi = FutureDataItem()
-            fi['date'] = date_str
-            fi['commodity'] = results[0]
-            fi['price'] = results[1]
-            fi['contract_date'] = results[2]
-            fi['main_price'] = results[3]
-            fi['base_diff'] = results[5]
-            fi['base_diff_percentage'] = results[6]
-            fi['highest_base_diff'] = results[8]
-            fi['lowest_base_diff'] = results[9]
-            fi['average_base_diff'] = results[10]
-            code = code_map[fi['commodity']]
-            date_len = 4
-            if upper_case_re.search(code):
-                date_len = 3
-            fi['code'] = fi['contract_date'][-date_len:]
-            yield fi
+            ins_id = data.find('instrumentid').text
+            if ins_id.startswith('IO'):
+                # 从列中提取对应数据
+                fi = OptionItem()
+                fi['DateTime'] = date_str
+                fi['Stockid'] = ins_id
+                fi['HighPrice'] = data.find('highestprice').text
+                fi['LowPrice'] = data.find('lowestprice').text
+                fi['OpenPrice'] = data.find('openprice').text
+                fi['ClosePrice'] = data.find('closeprice').text
+
+                yield fi
 
     # table = [
     #     [''.join(tds.css('::text').getall()).strip()
