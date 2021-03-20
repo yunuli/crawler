@@ -1,10 +1,5 @@
-from datetime import datetime, timedelta
-import re
+from datetime import datetime
 from ..items import *
-
-one_day = timedelta(days=1)
-today = datetime.now().date()
-upper_case_re = re.compile('[A-Z]')
 
 
 class A100ppiSpider(scrapy.Spider):
@@ -12,26 +7,29 @@ class A100ppiSpider(scrapy.Spider):
     allowed_domains = ['shibor.org/']
 
     def start_requests(self):
-        url = 'http://www.shibor.org/shibor/web/html/shibor.html'
+        today = datetime.now().date()
+        date_str = today.strftime('%Y-%m-%d')
+        url = f'''http://www.shibor.org/shibor/Shibor.do?date={date_str}'''
+        # url = 'http://www.shibor.org/shibor/web/html/shibor.html'
         yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
         self.logger.info('parsing--------')
         if response.status != 200:
             return
-        trs = response.css('tr')
-        rows = [tr.css('td').css('::text').getall() for tr in trs]
-        self.logger.info(rows)
-
         si = ShiborItem()
-        si['DateTime'] = rows[1][0].strip()
-        si['TON'] = rows[5][1]
-        si['T1W'] = rows[6][1]
-        si['T2W'] = rows[7][1]
-        si['T1M'] = rows[8][1]
-        si['T3M'] = rows[9][1]
-        si['T6M'] = rows[10][1]
-        si['T9M'] = rows[11][1]
-        si['T1Y'] = rows[12][1]
-        print(si)
+
+        si['DateTime'] = response.css('tr:first-child td::text').get().strip()
+
+        trs = response.css('.shiborquxian tr')
+        rows = [tr.css('td').css('::text').getall() for tr in trs]
+
+        si['TON'] = rows[0][1]
+        si['T1W'] = rows[1][1]
+        si['T2W'] = rows[2][1]
+        si['T1M'] = rows[3][1]
+        si['T3M'] = rows[4][1]
+        si['T6M'] = rows[5][1]
+        si['T9M'] = rows[6][1]
+        si['T1Y'] = rows[7][1]
         yield si
